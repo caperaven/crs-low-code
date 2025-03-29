@@ -1,4 +1,8 @@
-# [Index](./../index.md) - View DSL
+# View DSL
+
+## Index
+1. [DSL](./_dsl.md)
+2. [Index](./../index.md)
 
 ## Introduction
 The purpose of the dsl is to:

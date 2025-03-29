@@ -1,1 +1,4 @@
-[Data Model](./dsl/data_model.md)
+# Low Code Documentation
+
+## Index
+1. [DSL](./dsl/_dsl.md)
