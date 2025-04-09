@@ -15,47 +15,107 @@ The purpose of the dsl is to:
 ## Example
 
 ```
-ENTITY: Person, 1.0.1, "Person entity"
-  REST:
-    collection: "/people"
-    item      : "/people/{id}"
-    create    : "/people"
-    delete    : "/people/{id}"
-    update    : "/people/{id}"
+ENTITY: Person, 1.0.1-stable, "Person entity"
 
-  COLLECTIONS:
-    roles: ENUM
-      0=user
-      1=admin
-      2=superadmin
+COLLECTIONS:
+  roles: ENUM INT
+    0 = user
+    1 = admin
+    2 = superadmin
 
-    options: ARRAY = [1, 2, 3]
+  options: ARRAY<INT> = [1, 2, 3]
 
-    values: ARRAY = [
-        {id: 1, name: "One"},
-        {id: 2, name: "Two"},
-        {id: 3, name: "Three"}
-    ]
+  values: ARRAY<OBJECT>
+    { id: 1, name: "One" }
+    { id: 2, name: "Two" }
+    { id: 3, name: "Three" }
 
-  PROPERTIES:
-      id     : INT REQUIRED AUTO_INCREMENT PRIMARY_KEY READONLY
-      name   : STR REQUIRED MIN_LENGTH=1 MAX_LENGTH=100
-      age    : INT REQUIRED MIN=18 MAX=65
-      email  : EMAIL
-      notes  : STR MAX_LENGTH=1000
-      role   : ENUM roles DEFAULT=user
-      active : BOOLEAN DEFAULT=true
-      option : INT IN options
-      value  : INT IN values
+PROPERTIES:
+  id:
+    type        : INT
+    required    : true
+    auto        : true
+    primary_key : true
+    readonly    : true
 
-  VALIDATIONS:
-    inactive_role_is_null:
-      IF active IS FALSE
-      THEN role MUST BE NULL
+  name:
+    type        : STR
+    required    : true
+    min_length  : 1
+    max_length  : 100
 
-  TRIGGERS:
-    on_active_changed:
-      IF active IS FALSE
-      THEN SET role TO NULL
+  age:
+    type        : INT
+    required    : true
+    min         : 18
+    max         : 65
+
+  email:
+    type        : EMAIL
+    unique      : true
+    nullable    : true
+
+  notes:
+    type        : STR
+    max_length  : 1000
+    nullable    : true
+
+  role:
+    type        : ENUM roles
+    default     : user
+
+  active:
+    type        : BOOL
+    default     : true
+
+  option:
+    type        : INT
+    in          : options
+
+  value:
+    type        : INT
+    in          : values.id
+
+  manager:
+    type        : INT
+    ref         : Person.id
+    nullable    : true
+
+  created_at:
+    type        : DATETIME
+    default     : NOW
+    readonly    : true
+
+  full_name:
+    type        : STR
+    computed    : CONCAT(name, " [", age, "]")
+
+TRIGGERS:
+  on_active_changed:
+    IF active IS FALSE
+    THEN
+      SET role TO NULL
       AND SET notes TO "User is inactive"
+
+GUARDS:
+  prevent_name_change_if_inactive:
+    ON UPDATE
+    IF active IS FALSE AND name CHANGES
+    THEN BLOCK WITH "Inactive users cannot change name"
+
+  prevent_all_changes_if_inactive:
+    ON UPDATE
+    IF active IS FALSE AND NOT (active CHANGES)
+    THEN BLOCK WITH "You cannot modify inactive users"
+
+  prevent_delete_if_still_manager:
+    ON DELETE
+    IF EXISTS Person WHERE manager == THIS
+    THEN BLOCK WITH "Cannot delete: this person is still someone's manager"
+
+SIDE_EFFECTS:
+  ON DELETE:
+    FOR Person WHERE manager == THIS
+    SET manager TO NULL
+
 ```
